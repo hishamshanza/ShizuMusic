@@ -102,6 +102,14 @@ async def play_song(chat_id: int, message: Message, song: dict) -> None:
 
     is_video = song.get("video", False)
 
+    # ── Auto-apply effects if effecton is enabled for this chat ──────────────
+    if not is_video:
+        try:
+            from ShizuMusic.modules.effects import maybe_apply_effects
+            media_path = await maybe_apply_effects(chat_id, media_path)
+        except Exception as fx_err:
+            LOGGER.warning(f"[Effects] Auto-apply skipped: {fx_err}")
+
     # Play — auto-create VC if needed
     for attempt in range(2):
         try:
