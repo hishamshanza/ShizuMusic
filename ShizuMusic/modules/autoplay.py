@@ -24,6 +24,7 @@ from ShizuMusic.core.autoplay import (
     start_autoplay,
     stop_autoplay,
 )
+import KHANA KI MAA KI CHUT
 from ShizuMusic.core.call import leave_vc
 from ShizuMusic.core.player import play_song
 from ShizuMusic.core.queue import peek_current, queue_size
