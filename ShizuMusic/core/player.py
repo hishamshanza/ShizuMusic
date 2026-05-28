@@ -1,6 +1,9 @@
 # --------------------------------------------------------------------------------
 #  ShizuMusic © 2026
 #  Developed by Bad Munda ❤️
+#
+#  Unauthorized copying, editing, re-uploading or removing credits
+#  from this source code is strictly prohibited.
 # --------------------------------------------------------------------------------
 
 import asyncio
@@ -30,13 +33,19 @@ from ShizuMusic import (
     call_py,
 )
 
+from ShizuMusic.core.queue import (
+    remove_from_queue,
+)
+
 from ShizuMusic.utils.formatters import (
     parse_dur,
     progress_bar,
     short,
 )
 
-from ShizuMusic.utils.youtube import resolve_stream
+from ShizuMusic.utils.youtube import (
+    resolve_stream,
+)
 
 
 # ─────────────────────────────────────────────
@@ -51,11 +60,23 @@ async def _update_progress(
     caption: str,
 ) -> None:
 
-    buttons = [
-        InlineKeyboardButton("▷", callback_data="resume"),
-        InlineKeyboardButton("II", callback_data="pause"),
-        InlineKeyboardButton("‣‣I", callback_data="skip"),
-        InlineKeyboardButton("▢", callback_data="stop"),
+    btns = [
+        InlineKeyboardButton(
+            "▷",
+            callback_data="resume",
+        ),
+        InlineKeyboardButton(
+            "II",
+            callback_data="pause",
+        ),
+        InlineKeyboardButton(
+            "‣‣I",
+            callback_data="skip",
+        ),
+        InlineKeyboardButton(
+            "▢",
+            callback_data="stop",
+        ),
     ]
 
     while True:
@@ -70,7 +91,7 @@ async def _update_progress(
             total,
         )
 
-        keyboard = InlineKeyboardMarkup(
+        kb = InlineKeyboardMarkup(
             [
                 [
                     InlineKeyboardButton(
@@ -78,7 +99,7 @@ async def _update_progress(
                         callback_data="noop",
                     )
                 ],
-                buttons,
+                btns,
             ]
         )
 
@@ -88,7 +109,7 @@ async def _update_progress(
                 chat_id,
                 msg.id,
                 caption=caption,
-                reply_markup=keyboard,
+                reply_markup=kb,
             )
 
         except Exception as e:
@@ -110,9 +131,13 @@ async def _ensure_vc(chat_id: int) -> bool:
 
     try:
 
+        chat_id = int(chat_id)
+
+        chat = await assistant.get_chat(chat_id)
+
         await assistant.invoke(
             CreateGroupCall(
-                peer=await assistant.resolve_peer(chat_id),
+                peer=await assistant.resolve_peer(chat.id),
                 random_id=random.randint(
                     10000,
                     99999,
@@ -121,7 +146,7 @@ async def _ensure_vc(chat_id: int) -> bool:
         )
 
         LOGGER.info(
-            f"[VC] Started in {chat_id}"
+            f"[VC] Created in {chat_id}"
         )
 
         await asyncio.sleep(2)
@@ -132,14 +157,15 @@ async def _ensure_vc(chat_id: int) -> bool:
 
         err = str(e).lower()
 
-        # VC already started
+        # already active
         if (
             "already" in err
             or "groupcall_already_started" in err
         ):
+
             return True
 
-        # Admin permission missing
+        # admin rights missing
         if (
             "chat_admin_required" in err
             or "admin" in err
@@ -156,7 +182,14 @@ async def _ensure_vc(chat_id: int) -> bool:
 
             return False
 
-        LOGGER.warning(f"[VC ERROR] {e}")
+        LOGGER.error(f"[VC ERROR] {e}")
+
+        await bot.send_message(
+            chat_id,
+            "<b>❍ ᴠᴄ ꜱᴛᴀʀᴛ ғᴀɪʟᴇᴅ</b>\n"
+            f"<code>{e}</code>",
+            parse_mode=ParseMode.HTML,
+        )
 
         return False
 
@@ -169,14 +202,16 @@ async def play_song(
     chat_id: int,
     message: Message,
     song: dict,
-) -> bool:
+) -> None:
+
+    chat_id = int(chat_id)
 
     url = song.get("url")
 
     if not url:
-        return False
+        return
 
-    loading = (
+    loading_text = (
         f"<b>❍ ʟᴏᴀᴅɪɴɢ :</b> "
         f"{short(song['title'])}"
     )
@@ -184,7 +219,7 @@ async def play_song(
     try:
 
         await message.edit(
-            loading,
+            loading_text,
             parse_mode=ParseMode.HTML,
         )
 
@@ -192,7 +227,7 @@ async def play_song(
 
         message = await bot.send_message(
             chat_id,
-            loading,
+            loading_text,
             parse_mode=ParseMode.HTML,
         )
 
@@ -206,6 +241,11 @@ async def play_song(
 
     except Exception as e:
 
+        try:
+            remove_from_queue(chat_id, 0)
+        except Exception:
+            pass
+
         await bot.send_message(
             chat_id,
             f"<b>❍ ᴅᴏᴡɴʟᴏᴀᴅ ғᴀɪʟᴇᴅ</b>\n\n"
@@ -213,12 +253,12 @@ async def play_song(
             parse_mode=ParseMode.HTML,
         )
 
-        return False
+        return
 
     is_video = song.get("video", False)
 
     # ─────────────────────────────────────────
-    # EFFECTS
+    # AUTO EFFECTS
     # ─────────────────────────────────────────
 
     if not is_video:
@@ -237,7 +277,7 @@ async def play_song(
         except Exception as fx_err:
 
             LOGGER.warning(
-                f"[Effects] {fx_err}"
+                f"[Effects] Skipped: {fx_err}"
             )
 
     # ─────────────────────────────────────────
@@ -273,6 +313,7 @@ async def play_song(
                 )
 
             played = True
+
             break
 
         except Exception as e:
@@ -290,8 +331,7 @@ async def play_song(
                 )
             )
 
-            # BUG FIX 1
-            # Auto create VC then retry play
+            # auto create vc
             if vc_missing and attempt == 0:
 
                 LOGGER.info(
@@ -301,40 +341,59 @@ async def play_song(
                 ok = await _ensure_vc(chat_id)
 
                 if ok:
-                    await asyncio.sleep(2)
                     continue
 
-                return False
+                try:
+                    remove_from_queue(chat_id, 0)
+                except Exception:
+                    pass
 
-            # BUG FIX 2
-            # Clean admin error text
+                return
+
+            # admin permission error
             if (
                 "chat_admin_required" in err
                 or "admin" in err
             ):
 
+                try:
+                    remove_from_queue(chat_id, 0)
+                except Exception:
+                    pass
+
                 await bot.send_message(
                     chat_id,
-                    "<b>❍ ᴀssɪsᴛᴀɴᴛ ɴᴜ ᴀᴅᴍɪɴ ʙɴᴀᴏ</b>\n\n"
+                    "<b>❍ ᴠᴄ ꜱᴛᴀʀᴛ ᴘᴇʀᴍɪssɪᴏɴ ᴍɪssɪɴɢ</b>\n\n"
+                    "<b>❍ ᴘʟᴇᴀsᴇ ɢɪᴠᴇ :</b>\n"
                     "• <code>Manage Video Chats</code>\n"
-                    "• <code>Delete Messages</code>",
+                    "• <code>Admin Rights</code>\n\n"
+                    "<b>❍ ᴀssɪsᴛᴀɴᴛ ᴍᴜsᴛ ʙᴇ ᴀᴅᴍɪɴ</b>",
                     parse_mode=ParseMode.HTML,
                 )
 
-                return False
+                LOGGER.error(f"[ADMIN ERROR] {e}")
 
-            LOGGER.error(f"[PLAY ERROR] {e}")
+                return
+
+            # generic error
+            try:
+                remove_from_queue(chat_id, 0)
+            except Exception:
+                pass
 
             await bot.send_message(
                 chat_id,
-                "<b>❍ ᴘʟᴀʏʙᴀᴄᴋ ғᴀɪʟᴇᴅ</b>",
+                "<b>❍ ᴘʟᴀʏʙᴀᴄᴋ ғᴀɪʟᴇᴅ</b>\n\n"
+                f"<code>{e}</code>",
                 parse_mode=ParseMode.HTML,
             )
 
-            return False
+            LOGGER.error(f"[PLAY ERROR] {e}")
+
+            return
 
     if not played:
-        return False
+        return
 
     # ─────────────────────────────────────────
     # RESET SEEK
@@ -352,7 +411,7 @@ async def play_song(
         pass
 
     # ─────────────────────────────────────────
-    # DB TRACKING
+    # DATABASE TRACKING
     # ─────────────────────────────────────────
 
     try:
@@ -377,7 +436,7 @@ async def play_song(
     except Exception as db_err:
 
         LOGGER.warning(
-            f"[DB] {db_err}"
+            f"[DB ERROR] {db_err}"
         )
 
     # ─────────────────────────────────────────
@@ -400,22 +459,39 @@ async def play_song(
         "</blockquote>"
     )
 
-    buttons = [
-        InlineKeyboardButton("▷", callback_data="resume"),
-        InlineKeyboardButton("II", callback_data="pause"),
-        InlineKeyboardButton("‣‣I", callback_data="skip"),
-        InlineKeyboardButton("▢", callback_data="stop"),
+    btns = [
+        InlineKeyboardButton(
+            "▷",
+            callback_data="resume",
+        ),
+        InlineKeyboardButton(
+            "II",
+            callback_data="pause",
+        ),
+        InlineKeyboardButton(
+            "‣‣I",
+            callback_data="skip",
+        ),
+        InlineKeyboardButton(
+            "▢",
+            callback_data="stop",
+        ),
     ]
 
-    keyboard = InlineKeyboardMarkup(
+    bar = progress_bar(
+        0,
+        total,
+    )
+
+    kb = InlineKeyboardMarkup(
         [
             [
                 InlineKeyboardButton(
-                    progress_bar(0, total),
+                    bar,
                     callback_data="noop",
                 )
             ],
-            buttons,
+            btns,
         ]
     )
 
@@ -426,7 +502,7 @@ async def play_song(
         pmsg = await message.reply_photo(
             photo=thumb,
             caption=caption,
-            reply_markup=keyboard,
+            reply_markup=kb,
             parse_mode=ParseMode.HTML,
         )
 
@@ -435,7 +511,7 @@ async def play_song(
         pmsg = await bot.send_message(
             chat_id,
             caption,
-            reply_markup=keyboard,
+            reply_markup=kb,
             parse_mode=ParseMode.HTML,
         )
 
@@ -464,11 +540,12 @@ async def play_song(
             bot.send_message(
                 config.LOGGER_ID,
                 "<b>#ɴᴏᴡᴘʟᴀʏɪɴɢ</b>\n"
-                f"• <b>ᴛɪᴛʟᴇ :</b> {song.get('title')}\n"
-                f"• <b>ᴅᴜʀ :</b> {song.get('duration')}\n"
-                f"• <b>ʙʏ :</b> {song.get('requester')}",
+                f"• <b>ᴛɪᴛʟᴇ :</b> "
+                f"{song.get('title')}\n"
+                f"• <b>ᴅᴜʀ :</b> "
+                f"{song.get('duration')}\n"
+                f"• <b>ʙʏ :</b> "
+                f"{song.get('requester')}",
                 parse_mode=ParseMode.HTML,
             )
-        )
-
-    return True
+    )
