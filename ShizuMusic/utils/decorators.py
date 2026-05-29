@@ -1,3 +1,11 @@
+# --------------------------------------------------------------------------------
+#  ShizuMusic © 2026
+#  Developed by Bad Munda ❤️
+#
+#  Unauthorized copying, editing, re-uploading or removing credits
+#  from this source code is strictly prohibited.
+# --------------------------------------------------------------------------------
+
 from pyrogram import filters
 from pyrogram.handlers import MessageHandler
 from pyrogram.types import Message
@@ -7,33 +15,34 @@ from ShizuMusic import bot
 
 async def _block_middleware(_, message: Message) -> None:
     """
-    Global middleware handler registered at group=-1.
-    Runs before every other handler. If the chat or user is blocked,
-    it calls message.stop_propagation() so no plugin ever sees the message.
+    Global middleware — runs at group=-1, before every other handler.
+    Silently stops blocked groups / users from reaching any plugin.
     """
     try:
-        from ShizuMusic.plugins.block import is_group_blocked, is_user_blocked
+        # Import from utils.db directly — no circular dependency
+        from ShizuMusic.utils.db import is_group_blocked, is_user_blocked_db
     except ImportError:
-        return  # block plugin not loaded yet — let it pass
+        return
 
-    chat_id = message.chat.id if message.chat else None
+    chat_id = message.chat.id      if message.chat      else None
     user_id = message.from_user.id if message.from_user else None
 
     if chat_id and is_group_blocked(chat_id):
         message.stop_propagation()
         return
 
-    if user_id and is_user_blocked(user_id):
+    if user_id and is_user_blocked_db(user_id):
         message.stop_propagation()
         return
 
 
 def register_block_middleware() -> None:
     """
-    Call this once during bot startup (before plugins load).
-    Example in __main__.py:
+    Register the global block middleware.
+    Call once in __main__.py BEFORE plugins are loaded.
 
-        from ShizuMusic.middleware import register_block_middleware
+    Usage:
+        from ShizuMusic.utils.decorators import register_block_middleware
         register_block_middleware()
     """
     bot.add_handler(
@@ -41,5 +50,6 @@ def register_block_middleware() -> None:
             _block_middleware,
             filters=filters.all,
         ),
-        group=-1,   # runs before all other handlers (group 0, 1, 2 ...)
+        group=-1,
     )
+    
