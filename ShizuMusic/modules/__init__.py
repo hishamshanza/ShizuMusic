@@ -17,6 +17,7 @@ ALL_MODULES = [
     "skip",
     "stats",
     "stop",
+    "misc",
     "ping",
     "broadcast",
     "callbacks",
