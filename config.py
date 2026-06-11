@@ -10,16 +10,16 @@ load_dotenv()
 # ── Required ──────────────────────────────────────────────────────────────────
 API_ID          = int(os.environ["34437217"])
 API_HASH        = os.environ["e3d23047f69ea38cef9eec0fc1d1f94a"]
-BOT_TOKEN       = os.environ["BOT_TOKEN"]
-STRING_SESSION  = os.environ["STRING_SESSION"]
-MONGO_DB_URL    = os.environ["MONGO_DB_URL"]
-OWNER_ID        = int(os.environ["OWNER_ID"])
+BOT_TOKEN       = os.environ["8318780474:AAGKxt-XS5xRpIGkE2r_EtocWdcghgVth-U"]
+STRING_SESSION  = os.environ["BQINeGEAMoZwao15Q7VfcQq8pGpJ_K11hgNUnyqfWgawxRsFPTsQ6UqvYLqA7TBTn35-n1zDy8Qb3SPC4jAz1rRiwXt5TpjEcwE-G5Gp9dhW9piwZMh4pSQfhmmjq4pLr5R3MLGENuGjyxK-cvzSONmLlKB4eL3LLa1Y41qXoayiXbdngeeX-CdouCPgzohSi9g56xP-4ajboj8XhDH6Zf2cFdIx7xyZztsxyC5eB1eZ8OmZYWHX0t1RN27HvLRicZ0sdVPtPrwXf1sxq-ZISPUe-FvD1a7OjbtBhQBPkOIG2EOTd3YCx1Es42H-uI3QDRq-wLb2s_sqK9zkg9FZMAjglr0QewAAAAHv1oQ6AQ"]
+MONGO_DB_URL    = os.environ["mongodb+srv://hishammon:hishammon@cluster0.2g7bqyf.mongodb.net/?appName=Cluster0"]
+OWNER_ID        = int(os.environ["8908717915"])
 
 # ── Optional ──────────────────────────────────────────────────────────────────
-BOT_NAME         = os.getenv("BOT_NAME", "Shizu Music")
-BOT_LINK         = os.getenv("BOT_LINK", "https://t.me/ShizuMusicBot")
-UPDATES_CHANNEL  = os.getenv("UPDATES_CHANNEL", "https://t.me/PBX_UPDATE")
-SUPPORT_GROUP    = os.getenv("SUPPORT_GROUP", "https://t.me/PBXCHATS")
+BOT_NAME         = os.getenv("BOT_NAME", "ꜱᴋɪʟʟ x ꜰɪꜰᴀ ꜱᴛʀᴇᴀᴍ")
+BOT_LINK         = os.getenv("BOT_LINK", "http://t.me/Skill_x_fifa_stream_bot")
+UPDATES_CHANNEL  = os.getenv("UPDATES_CHANNEL", "https://t.me/skillxfifaworld")
+SUPPORT_GROUP    = os.getenv("SUPPORT_GROUP", "https://t.me/skillxfifaworld")
 LOGGER_ID        = int(os.getenv("LOGGER_ID", "0"))
 PING_IMG_URL     = os.getenv("PING_IMG_URL", "https://files.catbox.moe/ddzvc0.jpg",)
 SESSION_NAME     = os.getenv("SESSION_NAME", "ShizuMusic")
@@ -37,6 +37,6 @@ START_ANIMATIONS = [
 ]
 
 # ── Limits ────────────────────────────────────────────────────────────────────
-MAX_DURATION_SECONDS = 1800   # 30 minutes
+MAX_DURATION_SECONDS = 6000   # 30 minutes
 QUEUE_LIMIT          = 20
 COOLDOWN             = 10     # seconds between /play per chat
